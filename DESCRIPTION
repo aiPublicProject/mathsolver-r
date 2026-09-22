@@ -1,0 +1,14 @@
+Package: mathsolver
+Type: Package
+Title: BYOK AI Math Solver with Independent Verification
+Version: 0.1.0
+Authors@R: person("mathsolver.help", role = c("aut", "cre"), url = "https://mathsolver.help")
+Description: Bring your own OpenAI-compatible API key; answers are verified
+    by local arithmetic expression evaluation before they reach you. No model
+    output is ever executed as code.
+License: MIT + file LICENSE
+URL: https://mathsolver.help, https://github.com/mathsolver-help/mathsolver-r
+BugReports: https://github.com/mathsolver-help/mathsolver-r/issues
+Imports: jsonlite
+Encoding: UTF-8
+RoxygenNote: 7.3.1
