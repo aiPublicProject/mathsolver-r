@@ -18,7 +18,7 @@
 )
 
 solver_error <- function(code, message) {
-  err <- structure(list(code = code, message = message), class = c("solver_error", "error"))
+  err <- structure(list(code = code, message = message), class = c("solver_error", "error", "condition"))
   stop(err)
 }
 
