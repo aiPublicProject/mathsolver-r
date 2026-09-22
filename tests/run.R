@@ -90,5 +90,15 @@ check("http calls=1", calls2 == 1)
 r <- math_solver(api_key = "sk", transport = function(u, b, k) wrong)$solve("2x+3=11")
 check("still wrong unverified", isTRUE(!r$verified) && r$retries == 1)
 
+# smoke: real API (SMOKE_API_KEY via env, never in git)
+smoke_key <- Sys.getenv("SMOKE_API_KEY")
+if (nzchar(smoke_key)) {
+  smoke_base <- Sys.getenv("SMOKE_BASE_URL", "https://api.openai.com/v1")
+  solver <- math_solver(api_key = smoke_key, base_url = smoke_base)
+  r <- solver$solve("2x + 3 = 11, solve for x")
+  cat(sprintf("smoke: answer=%s verified=%s retries=%s\n", r$answer, r$verified, r$retries))
+  check("smoke real API", isTRUE(r$verified) && abs(r$answer - 4) < 1e-9)
+}
+
 cat(if (failures == 0) "\nALL PASS\n" else paste0("\n", failures, " FAILURES\n"))
 quit(status = if (failures == 0) 0 else 1)
