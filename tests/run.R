@@ -35,6 +35,10 @@ for (bad in c("system('x')", "1+2)", "foo(1)", "")) {
   check(paste0("rejects <", bad, ">"), throws(eval_expression(bad)))
 }
 
+# constructor validation
+check("NO_API_KEY at construct", throws(math_solver(api_key = "")))
+check("BAD_BASE_URL at construct", throws(math_solver(api_key = "sk", base_url = "not-a-url")))
+
 # solve: verified first try
 calls <- 0
 seen <- list()
@@ -43,47 +47,47 @@ tr_ok <- function(url, body, key) {
   seen$url <<- url; seen$key <<- key
   good
 }
-r <- solve("2x + 3 = 11, solve for x", api_key = "sk-test", transport = tr_ok)
+solver <- math_solver(api_key = "sk-test", base_url = "https://api.deepseek.com/v1", model = "deepseek-chat", transport = tr_ok)
+r <- solver$solve("2x + 3 = 11, solve for x")
 check("verified first try", isTRUE(r$verified) && identical(r$retries, 0) || (r$retries == 0 && r$verified))
 check("evaluated=4", isTRUE(all.equal(r$evaluated, 4)))
 check("calls=1", calls == 1)
-check("url ends /chat/completions", grepl("/chat/completions$", seen$url))
+check("url exact", identical(seen$url, "https://api.deepseek.com/v1/chat/completions"))
 check("key passed", identical(seen$key, "sk-test"))
 
 # retry recovers
 n <- 0
-r <- solve("2x+3=11", api_key = "sk", transport = function(u, b, k) {
+r <- math_solver(api_key = "sk", transport = function(u, b, k) {
   n <<- n + 1
   if (n == 1) wrong else good
-})
+})$solve("2x+3=11")
 check("retry recovers", isTRUE(r$verified) && r$retries == 1)
 
 # invalid json then ok
 n <- 0
-r <- solve("1+1", api_key = "sk", transport = function(u, b, k) {
+r <- math_solver(api_key = "sk", transport = function(u, b, k) {
   n <<- n + 1
   if (n == 1) "no json" else good
-})
+})$solve("1+1")
 check("invalid json then ok", isTRUE(r$verified))
 
 # invalid twice raises
-check("invalid twice raises", throws(solve("1+1", api_key = "sk", transport = function(u, b, k) "nothing")))
+check("invalid twice raises", throws(math_solver(api_key = "sk", transport = function(u, b, k) "nothing")$solve("1+1")))
 
 # no api key
-check("NO_API_KEY", throws(solve("1+1")))
 
 # http error no retry
 calls2 <- 0
 check("http error no retry", throws(local({
-  solve("1+1", api_key = "sk", transport = function(u, b, k) {
+  math_solver(api_key = "sk", transport = function(u, b, k) {
     calls2 <<- calls2 + 1
     solver_error("HTTP_ERROR", "401")
-  })
+  })$solve("1+1")
 })))
 check("http calls=1", calls2 == 1)
 
 # still wrong unverified
-r <- solve("2x+3=11", api_key = "sk", transport = function(u, b, k) wrong)
+r <- math_solver(api_key = "sk", transport = function(u, b, k) wrong)$solve("2x+3=11")
 check("still wrong unverified", isTRUE(!r$verified) && r$retries == 1)
 
 cat(if (failures == 0) "\nALL PASS\n" else paste0("\n", failures, " FAILURES\n"))

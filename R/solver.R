@@ -180,72 +180,86 @@ eval_expression <- function(src) {
   text
 }
 
-#' Solve a math problem with a BYOK key on an OpenAI-compatible endpoint.
+#' BYOK client factory for an OpenAI-compatible endpoint.
 #'
-#' @param problem the math problem, e.g. "2x + 3 = 11, solve for x"
-#' @param api_key user's own API key (BYOK)
-#' @param base_url OpenAI-compatible endpoint, default OpenAI
-#' @param model model id, default gpt-4o-mini
+#' Instantiate once, solve many:
+#'
+#'   solver <- math_solver(api_key = "sk-...", base_url = "https://api.deepseek.com/v1", model = "deepseek-chat")
+#'   r <- solver$solve("2x + 3 = 11, solve for x")
+#'   # r$verified / r$answer / r$steps / r$evaluated / r$retries
+#'
+#' @param api_key user's own key (BYOK)
+#' @param base_url any OpenAI-compatible endpoint (default OpenAI)
+#' @param model model id (default gpt-4o-mini)
 #' @param transport test injection: function(url, body_json, api_key) -> model reply string
-#' @return list(answer, steps, expression, evaluated, verified, retries)
+#' @return list with $solve(problem) closure
 #' @export
-solve <- function(problem, api_key = "", base_url = "https://api.openai.com/v1",
-                  model = "gpt-4o-mini", transport = NULL) {
+math_solver <- function(api_key = "", base_url = "https://api.openai.com/v1",
+                        model = "gpt-4o-mini", transport = NULL) {
   if (!nzchar(api_key)) solver_error("NO_API_KEY", "api_key is required (BYOK)")
-  if (!is.character(problem) || length(problem) != 1 || !nzchar(trimws(problem))) {
-    solver_error("NO_PROBLEM", "problem must be non-empty")
+  base <- sub("/+$", "", base_url)
+  if (!grepl("^https?://", base)) {
+    solver_error("BAD_BASE_URL", "base_url must be an http(s) URL, e.g. https://api.deepseek.com/v1")
   }
   if (is.null(transport)) transport <- .default_transport
-  url <- paste0(sub("/+$", "", base_url), "/chat/completions")
-  messages <- list(
-    list(role = "system", content = .system_prompt),
-    list(role = "user", content = problem)
-  )
-  call <- function() {
-    body <- jsonlite::toJSON(list(model = model, messages = messages, temperature = 0), auto_unbox = TRUE)
-    transport(url, body, api_key)
-  }
-
-  parsed <- tryCatch(
-    .parse_model_reply(call()),
-    solver_error = function(e) {
-      if (e$code != "INVALID_JSON") stop(e)
-      messages <<- c(messages,
-        list(role = "assistant", content = "invalid JSON"),
-        list(role = "user", content = "Your reply was not valid JSON. Reply again with the exact strict JSON shape.")
-      )
-      .parse_model_reply(call())
-    }
-  )
-
-  evaluate <- function(p) {
-    tryCatch({
-      ev <- eval_expression(p$expression)
-      list(ev = ev, ok = .numerically_equal(ev, p$answer))
-    }, solver_error = function(e) list(ev = NULL, ok = FALSE))
-  }
-
-  result <- evaluate(parsed)
-  evaluated <- result$ev
-  verified <- result$ok
-  retries <- 0
-
-  if (!verified) {
-    retries <- 1
-    messages <<- c(messages, list(role = "user", content = sprintf(
-      "Your verification expression evaluated to %s, which does not match your answer %s. Re-derive carefully and reply again with the same strict JSON shape.",
-      if (is.null(evaluated)) "an error" else format(evaluated), format(parsed$answer)
-    )))
-    tryCatch({
-      second <- .parse_model_reply(call())
-      r2 <- evaluate(second)
-      if (!is.null(r2$ev)) evaluated <- r2$ev
-      if (r2$ok) { parsed <- second; verified <- TRUE }
-    }, solver_error = function(e) NULL)
-  }
 
   list(
-    answer = parsed$answer, steps = parsed$steps, expression = parsed$expression,
-    evaluated = evaluated, verified = verified, retries = retries
+    solve = function(problem) {
+      if (!is.character(problem) || length(problem) != 1 || !nzchar(trimws(problem))) {
+        solver_error("NO_PROBLEM", "problem must be non-empty")
+      }
+      url <- paste0(base, "/chat/completions")
+      messages <- list(
+        list(role = "system", content = .system_prompt),
+        list(role = "user", content = problem)
+      )
+      call <- function() {
+        body <- jsonlite::toJSON(list(model = model, messages = messages, temperature = 0), auto_unbox = TRUE)
+        transport(url, body, api_key)
+      }
+
+      parsed <- tryCatch(
+        .parse_model_reply(call()),
+        solver_error = function(e) {
+          if (e$code != "INVALID_JSON") stop(e)
+          messages <<- c(messages,
+            list(role = "assistant", content = "invalid JSON"),
+            list(role = "user", content = "Your reply was not valid JSON. Reply again with the exact strict JSON shape.")
+          )
+          .parse_model_reply(call())
+        }
+      )
+
+      evaluate <- function(p) {
+        tryCatch({
+          ev <- eval_expression(p$expression)
+          list(ev = ev, ok = .numerically_equal(ev, p$answer))
+        }, solver_error = function(e) list(ev = NULL, ok = FALSE))
+      }
+
+      result <- evaluate(parsed)
+      evaluated <- result$ev
+      verified <- result$ok
+      retries <- 0
+
+      if (!verified) {
+        retries <- 1
+        messages <<- c(messages, list(role = "user", content = sprintf(
+          "Your verification expression evaluated to %s, which does not match your answer %s. Re-derive carefully and reply again with the same strict JSON shape.",
+          if (is.null(evaluated)) "an error" else format(evaluated), format(parsed$answer)
+        )))
+        tryCatch({
+          second <- .parse_model_reply(call())
+          r2 <- evaluate(second)
+          if (!is.null(r2$ev)) evaluated <- r2$ev
+          if (r2$ok) { parsed <- second; verified <- TRUE }
+        }, solver_error = function(e) NULL)
+      }
+
+      list(
+        answer = parsed$answer, steps = parsed$steps, expression = parsed$expression,
+        evaluated = evaluated, verified = verified, retries = retries
+      )
+    }
   )
 }
