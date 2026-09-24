@@ -351,7 +351,9 @@ math_solver <- function(api_key = "", base_url = "https://api.openai.com/v1",
           cv <- if (is.null(outcome$check_value)) "none" else format(outcome$check_value)
           sprintf("check evaluated to %s instead of 0", cv)
         }
-        messages <<- c(messages, list(
+        # direct body scope: plain <- updates the local messages (<<- would
+        # skip the current frame and leave the retry request without context)
+        messages <- c(messages, list(
           list(role = "assistant", content = jsonlite::toJSON(
             list(program = parsed$program, steps = parsed$steps, check = if (is.null(parsed$check)) NULL else parsed$check),
             auto_unbox = TRUE
