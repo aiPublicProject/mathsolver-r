@@ -24,9 +24,10 @@ throws_code_prefix <- function(expr, prefix) {
 eq <- function(a, b) isTRUE(all.equal(a, b, tolerance = 1e-9, check.attributes = FALSE))
 
 # v0.2 protocol fixtures: the model returns program/steps/check — never an answer.
-good <- '{"program": "let d = 11 - 3;\nlet x = d / 2;\nresult = x", "steps": ["Subtract 3: 2x = 8", "Divide by 2: x = 4"], "check": "2*{x} + 3 - 11"}'
+# (\\n stays the two-char JSON escape; jsonlite turns it into real newlines on parse)
+good <- '{"program": "let d = 11 - 3;\\nlet x = d / 2;\\nresult = x", "steps": ["Subtract 3: 2x = 8", "Divide by 2: x = 4"], "check": "2*{x} + 3 - 11"}'
 no_check <- '{"program": "result = 0.15 * 80", "steps": ["Compute 15% of 80"]}'
-wrong_check <- '{"program": "let d = 11 - 3;\nresult = d / 2", "steps": ["..."], "check": "2*{x} + 3 - 12"}'
+wrong_check <- '{"program": "let d = 11 - 3;\\nresult = d / 2", "steps": ["..."], "check": "2*{x} + 3 - 12"}'
 broken_program <- '{"program": "result = undefinedvar + 1", "steps": []}'
 
 # ---- expression evaluator ----
