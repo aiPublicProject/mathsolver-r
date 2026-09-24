@@ -200,7 +200,10 @@ check("http mock: 401 -> HTTP_ERROR", throws_code_prefix(mock$solver$solve("1+1"
 smoke_key <- Sys.getenv("SMOKE_API_KEY")
 if (nzchar(smoke_key)) {
   smoke_base <- Sys.getenv("SMOKE_BASE_URL", "https://api.openai.com/v1")
-  solver <- math_solver(api_key = smoke_key, base_url = smoke_base)
+  if (!nzchar(smoke_base)) smoke_base <- "https://api.openai.com/v1"
+  smoke_model <- Sys.getenv("SMOKE_MODEL", "gpt-4o-mini")
+  if (!nzchar(smoke_model)) smoke_model <- "gpt-4o-mini"
+  solver <- math_solver(api_key = smoke_key, base_url = smoke_base, model = smoke_model)
   r <- solver$solve("2x + 3 = 11, solve for x")
   cat(sprintf("smoke: answer=%s verified=%s retries=%s\n", r$answer, r$verified, r$retries))
   check("smoke real API", isTRUE(r$verified) && abs(r$answer - 4) < 1e-9)
