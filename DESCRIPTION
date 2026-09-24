@@ -9,6 +9,6 @@ Description: Bring your own OpenAI-compatible API key; answers are verified
 License: MIT + file LICENSE
 URL: https://mathsolver.help, https://github.com/mathsolver-help/mathsolver-r
 BugReports: https://github.com/mathsolver-help/mathsolver-r/issues
-Imports: jsonlite
+Imports: jsonlite, httr2
 Encoding: UTF-8
 RoxygenNote: 7.3.1
