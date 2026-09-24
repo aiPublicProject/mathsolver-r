@@ -243,7 +243,7 @@ run_check <- function(check_src, answer) {
   req <- httr2::req_method(req, "POST")
   req <- do.call(httr2::req_headers, c(list(req), headers))
   req <- httr2::req_body_raw(req, body, "application/json")
-  req <- httr2::req_error(req, function(req, res) FALSE) # surface status instead of raising (is_error must be a callback)
+  req <- httr2::req_error(req, function(req) FALSE) # surface status instead of raising (1-arg callback)
   res <- tryCatch(httr2::req_perform(req), error = function(e) NULL)
   if (is.null(res)) solver_error("HTTP_ERROR", "API call failed")
   list(status = res$status_code, body = rawToChar(res$body))
