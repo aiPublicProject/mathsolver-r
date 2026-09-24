@@ -174,16 +174,16 @@ run_program <- function(src) {
   for (raw in strsplit(src, "[;\n]+")[[1]]) {
     line <- trimws(raw)
     if (!nzchar(line)) next
-    m <- regexec(.let_re, line, perl = TRUE)[[1]]
-    if (m[1] != -1) {
-      parts <- regmatches(line, m)
+    m <- regexec(.let_re, line, perl = TRUE)
+    if (m[[1]][1] != -1) {
+      parts <- regmatches(line, m)[[1]]
       env[[parts[2]]] <- eval_expression(parts[3], env)
       if (identical(parts[2], "result")) result_defined <- TRUE
       next
     }
-    m <- regexec(.assign_re, line, perl = TRUE)[[1]]
-    if (m[1] != -1) {
-      parts <- regmatches(line, m)
+    m <- regexec(.assign_re, line, perl = TRUE)
+    if (m[[1]][1] != -1) {
+      parts <- regmatches(line, m)[[1]]
       env[[parts[2]]] <- eval_expression(parts[3], env)
       if (identical(parts[2], "result")) result_defined <- TRUE
       next
